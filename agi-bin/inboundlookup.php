@@ -19,7 +19,6 @@ $DEBUG = false;
 error_reporting(0);
 
 
-
 global $db;
 /**********************************************************************************************************************/
 function inboundlookup_debug($text) {
@@ -37,15 +36,14 @@ function inboundlookup_error($text,$tag='ERROR') {
         @$agi->verbose("inboundlookup [".$tag."] ".$text);
     }
 }
-
 /******************************************************/
 
 $agi = new AGI();
 $number =  $argv[1];
-$calledname =  $argv[2];
+$name = '';
+$company = '';
 
-if ($calledname != '' && strlen($number)> 4 ) 
-{
+if (strlen($number)> 4) {
     //get database data
     $results = $db->getAll("SELECT * FROM inboundlookup","getRow",DB_FETCHMODE_ASSOC);
     if (DB::isError($results) || empty($results)) {
@@ -78,8 +76,6 @@ if ($calledname != '' && strlen($number)> 4 )
         exit(1);
     }
 
-    $name = '';
-    $company = '';
     $namecount = 0;
 
     if (!empty($res)) {
@@ -96,7 +92,7 @@ if ($calledname != '' && strlen($number)> 4 )
             if (isset($row[0]) && !is_null($row[0]) && !empty($row[0])) {
                 $name = $row[0];
                 //if company is setted, make sure that there is only one name that correspond to this number, clear name if there are more than one
-                if ($compay != '') {
+                if ($company != '') {
                     $namecount++;
                     if ( $namecount > 1) {
                         $name = '';
@@ -110,16 +106,17 @@ if ($calledname != '' && strlen($number)> 4 )
     }
 
     inboundlookup_debug("Name = $name, Company = $company, Number = $number");
-
-    @$agi->set_variable("CONNECTEDLINE(name,i)","$name");
-    @$agi->set_variable("CALLERID(name)","$name");
-    @$agi->set_variable("CDR(ccompany)","$company");
-    @$agi->verbose("Name = \"$name\", Company = \"$company\" Number = \"$number\"");
-
-    exit(0);
-
-} else {
-
-    exit(0);
-
 }
+
+if ($name === '' && $company !== '') $displayname = $company;
+elseif ($name !== '' && $company !== '') $displayname = "$name ($company)";
+elseif ($name !== '' && $company === '') $displayname = $name;
+else $displayname = $number;
+
+@$agi->set_variable("CONNECTEDLINE(name,i)","$displayname");
+@$agi->set_variable("CALLERID(name)","$displayname");
+if ($name !== '' ) @$agi->set_variable("CDR(cnam)","$name");
+if ($company !== '' ) @$agi->set_variable("CDR(ccompany)","$company");
+@$agi->verbose("Name = \"$name\", Company = \"$company\" Number = \"$number\"");
+
+exit(0);

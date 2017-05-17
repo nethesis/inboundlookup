@@ -17,10 +17,29 @@ function inboundlookup_hookGet_config($engine) {
     global $ext;
     switch($engine) {
         case "asterisk":
-            $routes = core_routing_list();
-            if (!empty($routes) && !is_null(inboundlookup_get())) {
-                $ext->splice('macro-user-callerid', 's','cnum', new ext_agi('/var/lib/asterisk/agi-bin/inboundlookup.php,${DIAL_NUMBER},${DB(AMPUSER/${AMPUSER}/cidname)}'),"",-4);
-#                $ext->splice('macro-dialout-trunk', 's','customtrunk', new ext_agi('/var/lib/asterisk/agi-bin/inboundlookup.php,${DIAL_NUMBER},${DB(AMPUSER/${AMPUSER}/cidname)}'),"",-4);
+            $dids = core_did_list();
+            if (!empty($dids) && !is_null(inboundlookup_get())) {
+                $ext->splice('macro-user-callerid', 's','cnum', new ext_gotoif('$["${CDR(cnam)}" = ""]', 'cnum'),"",-2);
+                foreach($dids as $did) {
+                    $exten = trim($did['extension']);
+                    $cidnum = trim($did['cidnum']);
+                    if ($cidnum != '' && $exten == '') {
+                        $exten = 's';
+                        $pricid = ($did['pricid']) ? true:false;
+                    } else if (($cidnum != '' && $exten != '') || ($cidnum == '' && $exten == '')) {
+                        $pricid = true;
+                    } else {
+                        $pricid = false;
+                    }
+                    $context = ($pricid) ? "ext-did-0001":"ext-did-0002";
+                    if (function_exists('empty_freepbx')) {
+                        $exten = (empty_freepbx($exten)?"s":$exten);
+                    } else {
+                        $exten = (empty($exten)?"s":$exten);
+                    }
+                    $exten = $exten.(empty($cidnum)?"":"/".$cidnum); //if a CID num is defined, add it
+                    $ext->splice($context, $exten, 'did-cid-hook', new ext_agi('/var/lib/asterisk/agi-bin/inboundlookup.php,${CALLERID(number)}'),"",1);
+                }
             }
         break;
     }
