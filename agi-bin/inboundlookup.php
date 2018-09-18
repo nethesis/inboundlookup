@@ -72,7 +72,15 @@ if (strlen($number)> 4) {
     if($lookupdb instanceof DB_Error) {
         inboundlookup_error("Error conecting to asterisk database, skipped");
         exit(1);
-    } 
+    }
+
+    //remove international prefix from number
+    if (substr($number,0,1) === '+' ) {
+        $number = substr($number,3);
+    } elseif ( substr($number,0,2) === '00') {
+        $number = substr($number,4);
+    }
+
     $sql=preg_replace('/\[NUMBER\]/',$number,$results[0]['mysql_query']);
     inboundlookup_debug ($sql);
 
