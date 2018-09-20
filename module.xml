@@ -1,7 +1,7 @@
 <module>
     <rawname>inboundlookup</rawname>
     <name>Inbound Lookup</name>
-    <version>0.0.3</version>
+    <version>0.0.4</version>
     <publisher>Nethesis</publisher>
     <license>GPLv3+</license>
     <licenselink>http://www.gnu.org/licenses/gpl-3.0.txt</licenselink>
