@@ -27,7 +27,7 @@ function inboundlookup_hookGet_config($engine) {
         case "asterisk":
             $dids = core_did_list();
             if (!empty($dids) && !is_null(inboundlookup_get())) {
-                $ext->splice('macro-user-callerid', 's','cnum', new ext_gotoif('$["${CDR(cnam)}" = ""]', 'cnum'),"",-2);
+                $ext->splice('macro-user-callerid', 's','cnum', new ext_gotoif('$["${CDR(cnam)}" != ""]', 'cnum'),"",-2);
                 foreach($dids as $did) {
                     $exten = trim($did['extension']);
                     $cidnum = trim($did['cidnum']);
