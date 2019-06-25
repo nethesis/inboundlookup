@@ -84,13 +84,16 @@ if (strlen($number)> 4) {
     if (empty($res)) {
         //remove international prefix from number
         if (substr($number,0,1) === '+' ) {
-            $number = substr($number,3);
+            $mod_number = substr($number,3);
+            $sql=preg_replace('/\[NUMBER\]/',$mod_number,$results[0]['mysql_query']);
+            inboundlookup_debug ($sql);
+            $res = @$lookupdb->getAll($sql,DB_FETCHMODE_ORDERED);
         } elseif ( substr($number,0,2) === '00') {
-            $number = substr($number,4);
+            $mod_number = substr($number,4);
+            $sql=preg_replace('/\[NUMBER\]/',$mod_number,$results[0]['mysql_query']);
+            inboundlookup_debug ($sql);
+            $res = @$lookupdb->getAll($sql,DB_FETCHMODE_ORDERED);
         }
-        $sql=preg_replace('/\[NUMBER\]/',$number,$results[0]['mysql_query']);
-        inboundlookup_debug ($sql);
-        $res = @$lookupdb->getAll($sql,DB_FETCHMODE_ORDERED);
         inboundlookup_debug ($res);
     }
 
