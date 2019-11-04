@@ -46,7 +46,19 @@ function inboundlookup_hookGet_config($engine) {
                         $exten = (empty($exten)?"s":$exten);
                     }
                     $exten = $exten.(empty($cidnum)?"":"/".$cidnum); //if a CID num is defined, add it
-                    $ext->splice($context, $exten, 'did-cid-hook', new ext_agi('/var/lib/asterisk/agi-bin/inboundlookup.php,${CALLERID(number)}'),"",1);
+		    $ext->splice($context, $exten, 'did-cid-hook', new ext_agi('/var/lib/asterisk/agi-bin/inboundlookup.php,${CALLERID(number)}'),"inbound-lookup",1);
+                    $ext->splice($context, $exten, 'inbound-lookup', new ext_setvar('__REAL_CNAM','${CDR(cnam)}'),"",1);
+                    $ext->splice($context, $exten, 'inbound-lookup', new ext_setvar('__REAL_CCOMPANY','${CDR(ccompany)}'),"",1);
+                }
+		// ADD lookup for queue agent calls
+                $sql = "SELECT LENGTH(extension) as len FROM users GROUP BY len";
+                $sth = FreePBX::Database()->prepare($sql);
+                $sth->execute();
+                $rows = $sth->fetchAll(\PDO::FETCH_ASSOC);
+                foreach($rows as $row) {
+                    $ext->splice("from-queue-exten-only", '_'.str_repeat('X',$row['len']), 'checkrecord', new ext_set('CDR(cnum)','${CALLERID(num)}'),"cnum");
+                    $ext->splice("from-queue-exten-only", '_'.str_repeat('X',$row['len']), 'checkrecord', new ext_set('CDR(cnam)','${REAL_CNAM}'),"cnam");
+                    $ext->splice("from-queue-exten-only", '_'.str_repeat('X',$row['len']), 'checkrecord', new ext_set('CDR(ccompany)','${REAL_CCOMPANY}'),"ccompany");
                 }
             }
         break;
