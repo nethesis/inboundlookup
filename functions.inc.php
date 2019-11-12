@@ -51,15 +51,17 @@ function inboundlookup_hookGet_config($engine) {
                     $ext->splice($context, $exten, 'inbound-lookup', new ext_setvar('__REAL_CCOMPANY','${CDR(ccompany)}'),"",1);
                 }
 		// ADD lookup for queue agent calls
-                $sql = "SELECT LENGTH(extension) as len FROM users GROUP BY len";
-                $sth = FreePBX::Database()->prepare($sql);
-                $sth->execute();
-                $rows = $sth->fetchAll(\PDO::FETCH_ASSOC);
-                foreach($rows as $row) {
-                    $ext->splice("from-queue-exten-only", '_'.str_repeat('X',$row['len']), 'checkrecord', new ext_set('CDR(cnum)','${CALLERID(num)}'),"cnum");
-                    $ext->splice("from-queue-exten-only", '_'.str_repeat('X',$row['len']), 'checkrecord', new ext_set('CDR(cnam)','${REAL_CNAM}'),"cnam");
-                    $ext->splice("from-queue-exten-only", '_'.str_repeat('X',$row['len']), 'checkrecord', new ext_set('CDR(ccompany)','${REAL_CCOMPANY}'),"ccompany");
-                }
+		if (function_exists('queues_list') and count(queues_list(true)) > 0 ) {
+                    $sql = "SELECT LENGTH(extension) as len FROM users GROUP BY len";
+                    $sth = FreePBX::Database()->prepare($sql);
+                    $sth->execute();
+                    $rows = $sth->fetchAll(\PDO::FETCH_ASSOC);
+                    foreach($rows as $row) {
+                        $ext->splice("from-queue-exten-only", '_'.str_repeat('X',$row['len']), 'checkrecord', new ext_set('CDR(cnum)','${CALLERID(num)}'),"cnum");
+                        $ext->splice("from-queue-exten-only", '_'.str_repeat('X',$row['len']), 'checkrecord', new ext_set('CDR(cnam)','${REAL_CNAM}'),"cnam");
+                        $ext->splice("from-queue-exten-only", '_'.str_repeat('X',$row['len']), 'checkrecord', new ext_set('CDR(ccompany)','${REAL_CCOMPANY}'),"ccompany");
+                    }
+		}
             }
         break;
     }
