@@ -72,7 +72,6 @@ if (strlen($number)> 4) {
                         $name = $jsonData->name;
                         $company = $jsonData->company;
                         if ($name == '' && $company == '') {
-                            $apiFlag = false;
                             //continue with the next exe file
                             continue;
                         }
