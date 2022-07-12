@@ -85,7 +85,7 @@ if (strlen($number)> 4) {
         }
     }
     //look up $name and $company via Mysql query
-    else if (!$apiFlag) {
+    if (!$apiFlag) {
         //get database data
         $results = $db->getAll("SELECT * FROM inboundlookup","getRow",DB_FETCHMODE_ASSOC);
         if (DB::isError($results) || empty($results)) {
