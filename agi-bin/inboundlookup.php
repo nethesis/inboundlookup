@@ -7,31 +7,11 @@
 #
 
 set_time_limit(10);
-include_once ("/etc/freepbx.conf");
+include_once ("/etc/freepbx_db.conf");
 define("AGIBIN_DIR", "/var/lib/asterisk/agi-bin");
 include(AGIBIN_DIR."/phpagi.php");
-$DEBUG = false;
-error_reporting(0);
-
 
 global $db;
-/**********************************************************************************************************************/
-function inboundlookup_debug($text) {
-    global $DEBUG;
-    if ($DEBUG) {
-        return inboundlookup_error($text,'DEBUG');
-    }
-}
-function inboundlookup_error($text,$tag='ERROR') {
-    global $agi;
-    if (is_array($text))
-    {
-        @$agi->verbose("inboundlookup [".$tag."] ".print_r($text,true));
-    } else {
-        @$agi->verbose("inboundlookup [".$tag."] ".$text);
-    }
-}
-/******************************************************/
 
 $agi = new AGI();
 $number =  $argv[1];
@@ -62,7 +42,7 @@ if (strlen($number)> 4) {
                             continue;
                         }
                         //almost one exe file returns valid info
-                        inboundlookup_debug("Name = $name, Company = $company, Number = $number, source = API");
+                        @$agi->verbose("Name = $name, Company = $company, Number = $number, source = API");
                         $apiFlag = true;
                         break;
                     }
@@ -73,9 +53,13 @@ if (strlen($number)> 4) {
     //look up $name and $company via Mysql query
     if (!$apiFlag) {
         //get database data
-        $results = $db->getAll("SELECT * FROM inboundlookup","getRow",DB_FETCHMODE_ASSOC);
-        if (DB::isError($results) || empty($results)) {
-            inboundlookup_error ('Error getting inboundlookup data');
+        $sql = "SELECT * FROM inboundlookup";
+        $stmt = $db->prepare($sql);
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        if ($stmt->errorCode() != 0) {
+            @$agi->verbose("Error: ".$stmt->errorInfo()[2]);
             exit(1);
         }
 
@@ -85,40 +69,46 @@ if (strlen($number)> 4) {
         $db_host = $results[0]['mysql_host'];
         $db_name = $results[0]['mysql_dbname'];
         $db_engine = 'mysql';
-        $name = '';
-        $userfield = '';
-        $datasource = $db_engine.'://'.$db_user.':'.$db_pass.'@'.$db_host.'/'.$db_name;
-        $lookupdb = @DB::connect($datasource); // attempt connection
-        if($lookupdb instanceof DB_Error) {
-            inboundlookup_error("Error conecting to asterisk database, skipped");
+
+        $lookupdb = new PDO(
+            $db_engine.':host='.$db_host.';dbname='.$db_name,
+            $db_user,
+            $db_pass,
+        );
+        // check for errors
+        if($lookupdb instanceof PDOException) {
+            @$agi->verbose("Error conecting to asterisk database, skipped");
             exit(1);
         }
 
-
         $sql=preg_replace('/\[NUMBER\]/',$number,$results[0]['mysql_query']);
-        inboundlookup_debug ($sql);
+        @$agi->verbose($sql);
 
-        $res = @$lookupdb->getAll($sql,DB_FETCHMODE_ORDERED);
-        inboundlookup_debug ($res);
+        $stmt = $lookupdb->prepare($sql);
+        $stmt->execute();
+        $res = $stmt->fetchAll();
 
         if (empty($res)) {
             //remove international prefix from number
             if (substr($number,0,1) === '+' ) {
                 $mod_number = substr($number,3);
                 $sql=preg_replace('/\[NUMBER\]/',$mod_number,$results[0]['mysql_query']);
-                inboundlookup_debug ($sql);
-                $res = @$lookupdb->getAll($sql,DB_FETCHMODE_ORDERED);
+                @$agi->verbose($sql);
+                $stmt = $lookupdb->prepare($sql);
+                $stmt->execute();
+                $res = $stmt->fetchAll();
             } elseif ( substr($number,0,2) === '00') {
                 $mod_number = substr($number,4);
                 $sql=preg_replace('/\[NUMBER\]/',$mod_number,$results[0]['mysql_query']);
-                inboundlookup_debug ($sql);
-                $res = @$lookupdb->getAll($sql,DB_FETCHMODE_ORDERED);
+                @$agi->verbose($sql);
+                $stmt = $lookupdb->prepare($sql);
+                $stmt->execute();
+                $res = $stmt->fetchAll();
             }
-            inboundlookup_debug ($res);
         }
 
-        if ($lookupdb->isError($res)){
-            inboundlookup_debug("$sql\nERROR: ".$res->getMessage());
+        if ($stmt->errorCode() != 0) {
+            @$agi->verbose("Error: ".$stmt->errorInfo()[2]);
             exit(1);
         }
 
@@ -127,15 +117,15 @@ if (strlen($number)> 4) {
         if (!empty($res)) {
             //get company
             foreach ($res as $row) {
-                if (isset($row[1]) && !is_null($row[1]) && !empty($row[1])) {
+                if (!empty($row[1])) {
                     $company = $row[1];
-                    inboundlookup_debug("Company = $company");
+                    @$agi->verbose("Company = $company");
                     break; //company setted, no need to continue
                 }
             }
             //get name
             foreach ($res as $row) {
-                if (isset($row[0]) && !is_null($row[0]) && !empty($row[0])) {
+                if (!empty($row[0])) {
                     $name = $row[0];
                     //if company is setted, make sure that there is only one name that correspond to this number, clear name if there are more than one
                     if ($company != '') {
@@ -150,7 +140,7 @@ if (strlen($number)> 4) {
                 }
             }
         }
-        inboundlookup_debug("Name = $name, Company = $company, Number = $number, source = Mysql");
+        @$agi->verbose("Name = $name, Company = $company, Number = $number, source = Mysql");
     }
 }
 
@@ -163,6 +153,4 @@ else $displayname = $number;
 @$agi->set_variable("CALLERID(name)","$displayname");
 if ($name !== '' ) @$agi->set_variable("CDR(cnam)","$name");
 if ($company !== '' ) @$agi->set_variable("CDR(ccompany)","$company");
-@$agi->verbose("Name = \"$name\", Company = \"$company\" Number = \"$number\"");
-
-exit(0);
+@$agi->verbose("Name = \"$name\", Company = \"$company\", Number = \"$number\"");
