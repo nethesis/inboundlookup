@@ -31,7 +31,7 @@ $sql="CREATE TABLE IF NOT EXISTS inboundlookup (
     `mysql_dbname` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
     `mysql_query` varchar(1024) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
     `mysql_username` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    `mysql_password` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `mysql_password` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
     `mysql_charset` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
 
@@ -40,7 +40,9 @@ if(DB::IsError($check)) {
     die_freepbx("Can not create inboundlookup table\n");
 }
 
-
+// Alter inboundlookup table to allow bigger password
+$sql = "ALTER TABLE inboundlookup MODIFY COLUMN mysql_password VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL";
+$res = $db->query($sql);
 
 $db_name = FreePBX::Config()->get('CDRDBNAME');
 $db_host = FreePBX::Config()->get('CDRDBHOST');
